@@ -1,6 +1,6 @@
+import os
 import typer
 from typing import Annotated
-from rich.console import Console
 from communex._common import get_node_url
 from communex.client import CommuneClient
 from communex.compat.key import classic_load_key
@@ -10,6 +10,10 @@ from synthia.validator.text_validator import (
     ValidatorSettings,
     get_synthia_netuid
     )
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 app = typer.Typer()
@@ -24,14 +28,18 @@ def serve(
             )
         ],
     temperature: float = 0.2,
-    max_tokens: int = 1000,
-    iteration_interval: int = 1200,
+    max_tokens: int = 2000,
+    iteration_interval: int = 2400,
     ):
     keypair = classic_load_key(commune_key) # type: ignore
     settings = ValidatorSettings(
         temperature=temperature,
         max_tokens=max_tokens,
         iteration_interval=iteration_interval,
+        api_key=os.getenv("ANTHROPIC_API_KEY"),
+        hf_uploader_ss58="5FnGD6tHdrWGT5dq6TKk3iNyS2HbBTz2NHr42MCgJsz7Vrj3",
+        max_allowed_weights=420,
+        model="claude-3-opus-20240229"
     ) #type: ignore
     c_client = CommuneClient(get_node_url())
     synthia_uid = get_synthia_netuid(c_client)

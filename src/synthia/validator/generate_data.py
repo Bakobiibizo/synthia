@@ -1,6 +1,8 @@
 import json
 from typing import cast, Any
 
+from rich.console import Console
+
 from .meta_prompt import explanation_prompt
 from ..miner.BaseLLM import BaseLLM
 
@@ -35,7 +37,7 @@ class InputGenerator:
         )
         match val_answer:
             case None, explanation:
-                raise RuntimeError(f"Failed to generate explanation: {explanation}")
+                Console().log(f"Failed to generate explanation: {explanation}")
             case answer, _:
                 return answer, user_prompt, criteria
 
