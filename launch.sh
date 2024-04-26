@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if [ "$1" = "--setup" ]; then
+    create_setup
+fi
+
+
+
 create_setup() {
     cat <<'EOF' > ecosystem.config.js
     module.exports = {
@@ -33,6 +39,12 @@ create_setup() {
     ]
 };
 EOF
+cp env/config.env.sample env/config.env
+cat >> .env < EOF
+ANTHROPIC_API_KEY=mk-key
+EOF
+echo '.env' >> .gitignore
+
 }
 
 configure_launch() {
@@ -128,10 +140,13 @@ deploy_validator() {
     echo "Validator deployed."
 }
 
-echo "First Time Setup? (y/n)"
-read -p " " choice
+update_module() {
+    echo "Updating Module"
+    comx module update $module_path $key_name $ip_address $port --netuid $netuid
+    echo "Module updated."
+}
 
-if [ "$choice" = "y" ]; then
+if [ "$1" = "--setup" ]; then
     create_setup
 fi
 
@@ -143,45 +158,59 @@ echo "4. Register Validator"
 echo "5. Register Miner"
 echo "6. Serve Validator"
 echo "7. Serve Miner"
-echo "8. Transfer Balance"
-echo "9. Create Key"
+echo "8. Update Module"
+echo "9. Transfer Balance"
+echo "10. Create Key"
 read -p "Choose an action: " choice
 
 case "$choice" in
     1)
+        echo "Validator Configuration"
         configure_launch
         deploy_validator
         ;;
     2)
+        echo "Miner Configuration"
         configure_launch
         deploy_miner
         ;;
     3)
+        echo "Validator Configuration"
         configure_launch
         deploy_validator
+        echo "Miner Configuration"
         configure_launch
         deploy_miner
         ;;
     4)
+        echo "Validator Configuration"
         configure_launch
         register_validator
         ;;
     5)
+        echo "Miner Configuration"
         configure_launch
         register_miner
         ;;
     6)
+        echo "Validator Configuration"
         configure_launch
         serve_validator
         ;;
     7)
+        echo "Miner Configuration"
         configure_launch
         serve_miner
         ;;
-    8)  
+    8)
+        echo "Module Configuration"
+        configure_launch
+        update_module
+        ;;
+    9)  
         transfer_balance
         ;;
-    9)
+    10)
         create_key
         ;;
     *)

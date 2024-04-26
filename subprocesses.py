@@ -12,9 +12,7 @@ def start_detached_process(command: List[str]):
         text=True,
     )
 def run_command(command_choice: str, args: argparse.Namespace):
-    command_map = {
-        "serve_miner": ["comx", "module", "serve", "--ip", f"{args.ip_address}", "--port", f"{args.port}", "--subnets-whitelist", f"{args.netuid}", f"{args.module_path}", f"{args.key_name}"], "serve_validator": ["python", "-m", "synthia.cli", f"{args.key_name}"]
-    }
+    
     command = command_map[command_choice]
     process = start_detached_process(command)
     monitor_process(process)

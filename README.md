@@ -11,9 +11,10 @@ Welcome to the Synthia subnet, a bleeding-edge initiative to accelerate the open
   - [Resources](#resources)
   - [Installation](#installation)
     - [Setup your environment](#setup-your-environment)
-      - [With Nix](#with-nix)
-      - [Manually, on Ubuntu 22.04](#manually-on-ubuntu-2204)
       - [With Docker](#with-docker)
+        - [Operating with docker](#operating-with-docker)
+      - [Manually, on Ubuntu 22.04](#manually-on-ubuntu-2204)
+      - [With Nix](#with-nix)
   - [Running A Miner](#running-a-miner)
     - [Note](#note)
   - [Running A Validator](#running-a-validator)
@@ -43,6 +44,29 @@ Join us on this important journey as we distill the Closed-Source intelligence r
 
 ### Setup your environment
 
+#### With Docker
+- [Install Docker](https://docs.docker.com/get-docker/)
+- Run `docker pull ghcr.io/agicommies/synthia:0.5.1`
+- Run `docker run -v ~/.commune:/root/.commune -it [-p <port>:<port>] ghcr.io/agicommies/synthia:0.5.1`
+- Run `poetry shell` to enter the enviroment
+  
+  ##### Operating with docker
+  - You can quit docker with ctrl+d
+  - You can dettach from your session with ctrl+p followed by ctrl+q
+  - You can attach back to your session by running `docker attach <id>`
+  - You can list the ids of your containers with `docker ps`
+  - Note that you should pass the ports you're going to use to the container (with `-p <port>:<port>`) to bind them to your host machine.
+  - You can pass enviroments variables to docker with `-e <VARIABLE>=<value>`.
+    e.g `docker run -e ANTHROPIC_API_KEY=<your-anthropic-api-key> -v ~/.commune:/root/.commune -it ghcr.io/agicommies/synthia:0.5.1`
+
+#### Manually, on Ubuntu 22.04
+
+- Install Python 3
+  - `sudo apt install python3`
+- [Install Poetry](https://python-poetry.org/docs/)
+- Install the Python dependencies with `poetry install`
+- **! IMPORTANT** Enter the Python environment with `poetry shell` 
+
 #### With Nix
 
 - Install Nix with [install.determinate.systems]
@@ -57,25 +81,6 @@ Join us on this important journey as we distill the Closed-Source intelligence r
 
 [install.determinate.systems]: https://install.determinate.systems/
 
-#### Manually, on Ubuntu 22.04
-
-- Install Python 3
-  - `sudo apt install python3`
-- [Install Poetry](https://python-poetry.org/docs/)
-- Install the Python dependencies with `poetry install`
-- **! IMPORTANT** Enter the Python environment with `poetry shell` 
-
-#### With Docker
-- [Install Docker](https://docs.docker.com/get-docker/)
-- Run `docker pull ghcr.io/agicommies/synthia:0.2`
-- Run `docker run -v <path_to_keys>:/root/.commune ghcr.io/agicommies/synthia:0.2`
-- Run `poetry shell` to enter the enviroment
-  
-  Wherever you would need to set a variable on a config file, you can pass it as an enviroment variable to docker instead.
-  e.g `docker run -e ANTHROPIC_API_KEY=<your-anthropic-api-key> -v <path_to_keys>:/root/.commune ghcr.io/agicommies/synthia:0.2`
-
-
-
 ## Running A Miner
 
 1. Get an API key from [Anthropic](https://console.anthropic.com/).
@@ -89,6 +94,8 @@ Join us on this important journey as we distill the Closed-Source intelligence r
    ANTHROPIC_MAX_TOKENS=1000
    ANTHROPIC_TEMPERATURE=0.5
    ```
+
+   Alternatively, you can set up those values as enviroment variables.
 
 3. Serve the miner:
 
@@ -157,8 +164,11 @@ Join us on this important journey as we distill the Closed-Source intelligence r
    ANTHROPIC_TEMPERATURE=0.5
    OPENAI_API_KEY="<your-openai-api-key>"
    ```
+  
+    Alternatively, you can set up those values as enviroment variables.
+  
 
-4. Register the validator
+1. Register the validator
 
    Note that you are required to register the validator first, this is because the validator has to be on the network in order to set weights. You can do this by running the following command:
 
@@ -168,10 +178,11 @@ Join us on this important journey as we distill the Closed-Source intelligence r
 
    The current synthia **netuid** is **3**.
 
-5. Serve the validator
+2. Serve the validator
 
    ```sh
-   python3 -m synthia.cli <your_commune_key>
+   python3 -m synthia.cli <your_commune_key> [--call-timeout <seconds>]
    ```
+   The default value of the `--call-timeout` parameter is 65 seconds.
 
    Note: you need to keep this process alive, running in the background. Some options are [tmux](https://www.tmux.org/](https://ioflood.com/blog/install-tmux-command-linux/)), [pm2](https://pm2.io/docs/plus/quick-start/) or [nohup](https://en.wikipedia.org/wiki/Nohup).

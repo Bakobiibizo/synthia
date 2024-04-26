@@ -3,6 +3,7 @@ import concurrent.futures
 import re
 import time
 from functools import partial
+import random
 
 import numpy as np
 import requests
@@ -66,6 +67,7 @@ def set_weights(
 
     uids = list(weighted_scores.keys())
     weights = list(weighted_scores.values())
+    log(f"Settings weights for the following uids: {uids}")
     client.vote(key=key, uids=uids, weights=weights, netuid=netuid)
 
 
@@ -167,6 +169,7 @@ class TextValidator(Module):
         netuid: int,
         client: CommuneClient,
         embedder: Embedder | None = None,
+        call_timeout: int = 60,
     ) -> None:
         super().__init__()
         self.client = client
@@ -177,6 +180,7 @@ class TextValidator(Module):
         self.embedder = embedder
         self.val_model = "claude-3-opus-20240229"
         self.upload_client = ModuleClient("5.161.229.89", 80, self.key)
+        self.call_timeout = call_timeout
 
     def get_modules(self, client: CommuneClient, netuid: int) -> dict[int, str]:
         """Retrieves all module addresses from the subnet.
@@ -218,7 +222,10 @@ class TextValidator(Module):
         client = ModuleClient(module_ip, int(module_port), self.key)
         try:
             miner_answer = asyncio.run(
-                client.call("generate", miner_key, {"prompt": question}, timeout=120)
+                client.call(
+                    "generate", miner_key, 
+                    {"prompt": question}, timeout=self.call_timeout
+                    )
             )
             miner_answer = miner_answer["answer"]
 
@@ -320,15 +327,16 @@ class TextValidator(Module):
         subject, val_answer = self._split_val_subject(val_answer)
         miner_prompt = get_miner_prompt(criteria, subject, len(val_answer))
         embedded_val_answer = self.embedder.get_embedding(val_answer)
-
+        
         get_miner_prediction = partial(self._get_miner_prediction, miner_prompt)
+        log(f"Selected the following miners: {modules_info.keys()}")
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
             it = executor.map(get_miner_prediction, modules_info.values())
             miner_answers = [*it]
         for uid, miner_response in zip(modules_info.keys(), miner_answers):
             miner_answer = miner_response
             if not miner_answer:
-                log("Skipping miner that didn't answer")
+                log(f"Skipping miner {uid} that didn't answer")
                 continue
             score = self._score_miner(miner_answer, embedded_val_answer)
             for answer in response_cache:
@@ -373,6 +381,7 @@ class TextValidator(Module):
                         "upload_to_hugging_face",
                         hf_uploader_ss58,
                         upload_dict,
+                        timeout=self.call_timeout,
                     )
                 )
                 log("UPLOADED DATA")
