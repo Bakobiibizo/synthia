@@ -4,10 +4,8 @@ if [ "$1" = "--setup" ]; then
     create_setup
 fi
 
-
-
 create_setup() {
-    cat <<'EOF' > ecosystem.config.js
+    cat <<'EOF' >ecosystem.config.js
     module.exports = {
     apps: [
         {
@@ -39,29 +37,31 @@ create_setup() {
     ]
 };
 EOF
-cp env/config.env.sample env/config.env
-cat >> .env < EOF
-ANTHROPIC_API_KEY=mk-key
+    cp env/config.env.sample env/config.env
+    cat <<EOF >>.env
+AGENTARTIFICIAL_API_KEY=sk-1234
+AGENTARTIFICIAL_URL=https://text-agentartificial.ngrok.dev/
 EOF
-echo '.env' >> .gitignore
-
+    echo '.env' >>.gitignore
 }
 
 configure_launch() {
-    read -p "Module Path: " module_path
-    read -p "Module key name: " key_name
-    read -p "Create key (y/n): " createkey
-    if [ "$createkey" = "y" ]; then
-    create_key
+    read -pr "Module Path: " module_path
+    read -pr "Module key name: " key_name
+    read -pr "Create key (y/n): " createkey
+    if [ -n "$createkey" ]; then
+        create_key
     fi
-    read -p "Transfer balance (y/n): " transfer_balance
+    read -pr "Transfer balance (y/n): " transfer_balance
     if [ "$transfer_balance" = "y" ]; then
-    transfer_balance
+        transfer_balance
     fi
-    read -p "Module IP address: " ip_address
-    read -p "Module port: " port
-    read -p "Module netuid: " netuid
-    read -p "Module stake: " stake
+    read -pr "Module IP address: " ip_address
+    read -pr "Module port: " port
+    read -pr "Module netuid: " netuid
+    if [ -z "$is_register_validator" ] || [ -z "$is_register_miner" ] || [ -z "$is_deploy_validator" ] || [ -z "$is_deploy_miner" ]; then
+        read -pr "Module stake: " stake
+    fi
     export MODULE_PATH="$module_path"
     export MODULE_IP="$ip_address"
     export MODULE_PORT="$port"
@@ -73,22 +73,21 @@ configure_launch() {
 create_key() {
     echo "Creating key"
     if [ ! -z "$key_name" ]; then
-    read -p "Key name: " key_name
+        read -pr "Key name: " key_name
     fi
     comx key create "$key_name"
     echo "$key_name created"
 }
 
-
 # Function to perform a balance transfer
 transfer_balance() {
     echo "Initiating Balance Transfer"
-    read -p "From Key (sender): " key_from
-    read -p "Amount to Transfer: " amount
-    if [ ! -z "$key_name" ]; then
-    read -p "To Key (recipient): " key_to
+    read -pr "From Key (sender): " key_from
+    read -pr "Amount to Transfer: " amount
+    if [ -z "$key_name" ]; then
+        read -pr "To Key (recipient): " key_to
     else
-        key_to = $key_name
+        key_to="$key_name"
     fi
     comx balance transfer "$key_from" "$amount" "$key_to"
     echo "Transfer of $amount from $key_from to $key_to initiated."
@@ -109,7 +108,7 @@ serve_miner() {
     export MODULE_KEYNAME="$key_name"
     export MODULE_PATH="$module_path"
     export MODULE_STAKE="$stake"
-    
+
     pm2 start "comx module serve synthia.miner.$module_path ${key_name} --ip $ip_address --port $port --subnets-whitelist $netuid" --name "$module_path"
     echo "Miner served."
 }
@@ -123,6 +122,7 @@ register_miner() {
 serve_validator() {
     echo "Serving Validator"
     pm2 start "python -m synthia.cli $module_path"
+
     echo "Validator served."
 }
 
@@ -142,7 +142,7 @@ deploy_validator() {
 
 update_module() {
     echo "Updating Module"
-    comx module update $module_path $key_name $ip_address $port --netuid $netuid
+    comx module update "$module_path" "$key_name" "$ip_address" "$port" --netuid "$netuid"
     echo "Module updated."
 }
 
@@ -164,59 +164,68 @@ echo "10. Create Key"
 read -p "Choose an action: " choice
 
 case "$choice" in
-    1)
-        echo "Validator Configuration"
-        configure_launch
-        deploy_validator
-        ;;
-    2)
-        echo "Miner Configuration"
-        configure_launch
-        deploy_miner
-        ;;
-    3)
-        echo "Validator Configuration"
-        configure_launch
-        deploy_validator
-        echo "Miner Configuration"
-        configure_launch
-        deploy_miner
-        ;;
-    4)
-        echo "Validator Configuration"
-        configure_launch
-        register_validator
-        ;;
-    5)
-        echo "Miner Configuration"
-        configure_launch
-        register_miner
-        ;;
-    6)
-        echo "Validator Configuration"
-        configure_launch
-        serve_validator
-        ;;
-    7)
-        echo "Miner Configuration"
-        configure_launch
-        serve_miner
-        ;;
-    8)
-        echo "Module Configuration"
-        configure_launch
-        update_module
-        ;;
-    9)  
-        transfer_balance
-        ;;
-    10)
-        create_key
-        ;;
-    *)
-        echo "Invalid choice"
-        exit 1
-        ;;
+1)
+    echo "Validator Configuration"
+    is_deploy_validator=true
+    configure_launch
+    deploy_validator
+    ;;
+2)
+    echo "Miner Configuration"
+    is_deploy_miner=true
+    configure_launch
+    deploy_miner
+    ;;
+3)
+    echo "Validator Configuration"
+    is_deploy_validator=true
+    configure_launch
+    deploy_validator
+    echo "Miner Configuration"
+    is_deploy_miner=true
+    configure_launch
+    deploy_miner
+    ;;
+4)
+    echo "Validator Configuration"
+    is_register_validator=true
+    configure_launch
+    register_validator
+    ;;
+5)
+    echo "Miner Configuration"
+    is_register_miner=true
+    configure_launch
+    register_miner
+    ;;
+6)
+    echo "Validator Configuration"
+    is_serve_validator=true
+    configure_launch
+    serve_validator
+    ;;
+7)
+    echo "Miner Configuration"
+    is_serve_validator=true
+    configure_launch
+    serve_miner
+    ;;
+8)
+    echo "Module Configuration"
+    is_update_module=true
+    configure_launch
+    update_module
+    ;;
+9)
+    transfer_balance
+    ;;
+10)
+    create_key
+    ;;
+*)
+    echo "Invalid choice"
+    exit 1
+    ;;
 esac
 
 echo "Deployment complete."
