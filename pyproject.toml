@@ -17,7 +17,7 @@ communex= "^0.1.21"
 
 keylimiter = "^0.1.5"
 slowapi = "^0.1.9"
-python-multipart = "^0.0.5"
+python-multipart = "^0.0.7"
 
 anthropic = "^0.21.3"
 openai = "^1.14.2"
