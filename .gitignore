@@ -1,10 +1,19 @@
-.direnv
+/ecosystem.config.js
+
+/.venv
+/.direnv
+
+/.env
 /env/**/*.env
+
+__pycache__
 .ipynb_checkpoints
-src/synthia/db/data
-src/synthia/db
+
 /.tests
+<<<<<<< HEAD
 __pycache__
 .env
 .env
 .venv/
+=======
+>>>>>>> main

@@ -3,28 +3,26 @@ import concurrent.futures
 import re
 import time
 from functools import partial
-import random
-from enum import Enum
 
 import numpy as np
 import requests
 from requests import HTTPError
-from communex.client import CommuneClient  # type: ignore
-from communex.module.client import ModuleClient  # type: ignore
-from communex.module.module import Module  # type: ignore
-from communex.compat.key import check_ss58_address  # type: ignore
-from communex.types import Ss58Address  # type: ignore
-from fuzzywuzzy import fuzz  # type: ignore
-from substrateinterface import Keypair  # type: ignore
+from src.communex.src.communex.client import CommuneClient  
+from src.communex.src.communex.module.client import ModuleClient  
+from src.communex.src.communex.module.module import Module  
+from src.communex.src.communex.compat.key import check_ss58_address  
+from src.communex.src.communex.types import Ss58Address  
+from fuzzywuzzy import fuzz  
+from substrateinterface import Keypair  
 
-from ..miner._config import AnthropicSettings, OpenrouterSettings
-from ..miner.anthropic import AnthropicModule, OpenrouterModule
+from ..miner._config import AnthropicSettings
+from ..miner.anthropic import AnthropicModule
 from ..utils import retry, log
 from ._config import ValidatorSettings
 from .generate_data import InputGenerator
 from .meta_prompt import get_miner_prompt, Criteria
 from .similarity import Embedder, OpenAIEmbedder, OpenAISettings, euclidean_distance
-from .sigmoid import threshold_sigmoid_reward_distribution
+from .math import threshold_sigmoid_reward_distribution
 
 
 # TODO: make it match ipv6
@@ -36,6 +34,8 @@ def set_weights(
 ) -> None:
     """
     Set weights for miners based on their scores.
+
+    The lower the score, the higher the weight.
 
     Args:
         score_dict (dict[int, float]): A dictionary mapping miner UIDs to their scores.
@@ -56,7 +56,7 @@ def set_weights(
     # Iterate over the items in the score_dict
     for uid, score in adjsuted_to_sigmoid.items():
         # Calculate the normalized weight as an integer
-        weight = int(score * 1000 / scores)
+        weight = int(score / scores * 100)
 
         # Add the weighted score to the new dictionary
         weighted_scores[uid] = weight
@@ -85,7 +85,7 @@ def cut_to_max_allowed_weights(
     """
 
     if not settings:
-        settings = ValidatorSettings()  # type: ignore
+        settings = ValidatorSettings()  
 
     max_allowed_weights = settings.max_allowed_weights
     
@@ -131,12 +131,8 @@ def get_ip_port(modules_adresses: dict[int, str]):
         if x is not None
     }
 
-class ClaudeProviders(Enum):
-    ANTHROPIC  = "anthropic"
-    OPENROUTER = "openrouter"
 
-
-class TextValidator(Module):
+class AgentArtificial(Module):
     """A class for validating text data using a Synthia network.
 
     This class provides methods for generating questions and answers, scoring miner
@@ -171,7 +167,6 @@ class TextValidator(Module):
         key: Keypair,
         netuid: int,
         client: CommuneClient,
-        provider: ClaudeProviders = ClaudeProviders.OPENROUTER,
         embedder: Embedder | None = None,
         call_timeout: int = 60,
     ) -> None:
@@ -180,12 +175,11 @@ class TextValidator(Module):
         self.key = key
         self.netuid = netuid
         if not embedder:
-            embedder = OpenAIEmbedder(OpenAISettings())  # type: ignore
+            embedder = OpenAIEmbedder(OpenAISettings())  
         self.embedder = embedder
         self.val_model = "claude-3-opus-20240229"
         self.upload_client = ModuleClient("5.161.229.89", 80, self.key)
         self.call_timeout = call_timeout
-        self.provider = provider
 
     def get_modules(self, client: CommuneClient, netuid: int) -> dict[int, str]:
         """Retrieves all module addresses from the subnet.
@@ -201,23 +195,11 @@ class TextValidator(Module):
         return module_addreses
 
     def _get_validation_dataset(self, settings: ValidatorSettings):
-        
-        # TODO: make ValidatorSettings and the miners settings inherit from a
-        # common protocol
-        match self.provider:
-            case ClaudeProviders.ANTHROPIC:
-                claude_settings = AnthropicSettings()  # type: ignore
-                claude_settings.temperature = settings.temperature
-                claude_settings.max_tokens = settings.max_tokens
-                claude_settings.model = self.val_model
-                claude = AnthropicModule(claude_settings)
-            case ClaudeProviders.OPENROUTER:
-                claude_settings = OpenrouterSettings()  # type: ignore
-                claude_settings.temperature = settings.temperature
-                claude_settings.max_tokens = settings.max_tokens
-                claude_settings.model = self.val_model
-                claude = OpenrouterModule(claude_settings)
-        
+        claude_settings = AnthropicSettings()  
+        claude_settings.temperature = settings.temperature
+        claude_settings.max_tokens = settings.max_tokens
+        claude_settings.model = self.val_model
+        claude = AnthropicModule(claude_settings)
         ig = InputGenerator(claude)
 
         retrier = retry(4, [Exception])
@@ -236,7 +218,6 @@ class TextValidator(Module):
     ) -> str | None:
         connection, miner_key = miner_info
         module_ip, module_port = connection
-
         client = ModuleClient(module_ip, int(module_port), self.key)
         try:
             miner_answer = asyncio.run(
@@ -251,7 +232,6 @@ class TextValidator(Module):
             log(f"Miner {module_ip}:{module_port} failed to generate an answer")
             print(e)
             miner_answer = None
-
         return miner_answer
 
     def _get_unit_euclid_distance(
@@ -286,7 +266,7 @@ class TextValidator(Module):
     def _test_score(self, text_a: str, text_b: str):
         embbeded_a = self.embedder.get_embedding(text_a)
         score = self._score_miner(text_b, embbeded_a)
-        sim = fuzz.ratio(text_a, text_b)  # type: ignore
+        sim = fuzz.ratio(text_a, text_b)  
         log(f"Score: {score}, similarity: {sim}")
 
     def _to_hf_data(
@@ -359,10 +339,11 @@ class TextValidator(Module):
                 continue
             score = self._score_miner(miner_answer, embedded_val_answer)
             for answer in response_cache:
-                similarity = fuzz.ratio(answer, miner_answer)  # type: ignore
+                similarity = fuzz.ratio(answer, miner_answer)  
                 log(f"similarity: {similarity}")
             response_cache.append(miner_answer)
 
+            time.sleep(0.5)
             # score has to be lower or eq to 1, as one is the best score
             assert score <= 1
             score_dict[uid] = score
@@ -413,7 +394,7 @@ class TextValidator(Module):
 
     def validation_loop(self, settings: ValidatorSettings | None = None) -> None:
         if not settings:
-            settings = ValidatorSettings()  # type: ignore
+            settings = ValidatorSettings()  
 
         # Run validation
         hf_ss58 = check_ss58_address(settings.hf_uploader_ss58)
@@ -424,7 +405,6 @@ class TextValidator(Module):
                 if db:
                     self.upload_data(db, hf_ss58)
 
-<<<<<<< HEAD
                 elapsed = time.time() - start_time
                 if elapsed < settings.iteration_interval:
                     sleep_time = settings.iteration_interval - elapsed
@@ -433,11 +413,3 @@ class TextValidator(Module):
             except Exception as e:
                 log(f"Validation loop failed: {e}")
                 time.sleep(10)
-=======
-            elapsed = time.time() - start_time
-            if elapsed < settings.iteration_interval:
-                sleep_time = settings.iteration_interval - elapsed
-                log(f"Sleeping for {sleep_time}")
-                time.sleep(sleep_time)
-
->>>>>>> main

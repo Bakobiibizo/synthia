@@ -18,6 +18,10 @@ Welcome to the Synthia subnet, a bleeding-edge initiative to accelerate the open
   - [Running A Miner](#running-a-miner)
     - [Note](#note)
   - [Running A Validator](#running-a-validator)
+  - [Launcher Script](#launcher-script)
+    - [Using the launcher](#using-the-launcher)
+    - [What it does](#what-it-does)
+    - [Video tutorial](#video-tutorial)
 
 ## Overview
 
@@ -42,12 +46,19 @@ Join us on this important journey as we distill the Closed-Source intelligence r
 
 ## Installation
 
+Make sure you are on the latest CommuneX version.
+
+```sh
+pip install communex --upgrade
+```
+
 ### Setup your environment
 
 #### With Docker
+
 - [Install Docker](https://docs.docker.com/get-docker/)
-- Run `docker pull ghcr.io/agicommies/synthia:0.5.1`
-- Run `docker run -v ~/.commune:/root/.commune -it [-p <port>:<port>] ghcr.io/agicommies/synthia:0.5.1`
+- Run `docker pull ghcr.io/agicommies/synthia:a039609`
+- Run `docker run -v ~/.commune:/root/.commune -it [-p <port>:<port>] ghcr.io/agicommies/synthia:a039609`
 - Run `poetry shell` to enter the enviroment
   
   ##### Operating with docker
@@ -57,7 +68,7 @@ Join us on this important journey as we distill the Closed-Source intelligence r
   - You can list the ids of your containers with `docker ps`
   - Note that you should pass the ports you're going to use to the container (with `-p <port>:<port>`) to bind them to your host machine.
   - You can pass enviroments variables to docker with `-e <VARIABLE>=<value>`.
-    e.g `docker run -e ANTHROPIC_API_KEY=<your-anthropic-api-key> -v ~/.commune:/root/.commune -it ghcr.io/agicommies/synthia:0.5.1`
+    e.g `docker run -e ANTHROPIC_API_KEY=<your-anthropic-api-key> -v ~/.commune:/root/.commune -it ghcr.io/agicommies/synthia:a039609`
 
 #### Manually, on Ubuntu 22.04
 
@@ -65,7 +76,7 @@ Join us on this important journey as we distill the Closed-Source intelligence r
   - `sudo apt install python3`
 - [Install Poetry](https://python-poetry.org/docs/)
 - Install the Python dependencies with `poetry install`
-- **! IMPORTANT** Enter the Python environment with `poetry shell` 
+- **! IMPORTANT** Enter the Python environment with `poetry shell`
 
 #### With Nix
 
@@ -90,12 +101,15 @@ Join us on this important journey as we distill the Closed-Source intelligence r
 
    ```sh
    ANTHROPIC_API_KEY="<your-anthropic-api-key>"
+   OPENROUTER_API_KEY="<your-openrouter-api-key>"
    ANTHROPIC_MODEL=claude-3-opus-20240229
    ANTHROPIC_MAX_TOKENS=1000
    ANTHROPIC_TEMPERATURE=0.5
    ```
 
    Alternatively, you can set up those values as enviroment variables.
+   Note that you just need to provide the key to the provider that you're going
+   to use
 
 3. Serve the miner:
 
@@ -111,11 +125,17 @@ Join us on this important journey as we distill the Closed-Source intelligence r
    comx module serve synthia.miner.anthropic.AnthropicModule <your_commune_key> --subnets-whitelist <synthia netuid> --ip 0.0.0.0
    ```
 
+    Alternatively, if you want to run a openrouter miner:
+
+   ```sh
+   comx module serve synthia.miner.anthropic.OpenrouterModule <your_commune_key> --subnets-whitelist <synthia netuid> --ip 0.0.0.0
+   ```
+  
    The **ip** is passed as **0.0.0.0** to accept **outside connections**, since the default,
    **127.0.0.1** accepts **only local** connections. Synthia has the **netuid 3**. Key is a name of your commune wallet/key.
    If you don't have a wallet, generate one by running
 
-   ```bash
+   ```sh
    comx key create <name>
    ```
 
@@ -124,15 +144,15 @@ Join us on this important journey as we distill the Closed-Source intelligence r
 
    Example using pm2
 
-   ```bash
+   ```sh
    pm2 start "comx module serve synthia.miner.anthropic.AnthropicModule <key> --subnets-whitelist <synthia netuid> --ip 0.0.0.0" --name <name>
    ```
 
 4. Finally register the module on the Synthia subnet:
 
-   ```sh
-   comx module register <name> <your_commune_key> --ip <your-ip-address> --port <port> --netuid <synthia netuid>  
-   ```
+    ```sh
+    comx module register <name> <your_commune_key> --ip <your-ip-address> --port <port> --netuid <synthia netuid>  
+    ```
 
 ### Note
 
@@ -154,11 +174,14 @@ Join us on this important journey as we distill the Closed-Source intelligence r
 ## Running A Validator
 
 1. Get an API key from [Anthropic](https://console.anthropic.com/).
+
 2. Gen an API key for embeddings from [OpenAi](https://openai.com/product)
+
 3. Create a file named `config.env` in the `env/` folder with the following contents (you can also see the `env/config.env.sample` as an example):
 
    ```sh
    ANTHROPIC_API_KEY="<your-anthropic-claude-api-key>"
+   OPENROUTER_API_KEY="<your-openrouter-api-key>"
    ANTHROPIC_MODEL=claude-3-opus-20240229
    ANTHROPIC_MAX_TOKENS=1000
    ANTHROPIC_TEMPERATURE=0.5
@@ -166,9 +189,8 @@ Join us on this important journey as we distill the Closed-Source intelligence r
    ```
   
     Alternatively, you can set up those values as enviroment variables.
-  
 
-1. Register the validator
+4. Register the validator
 
    Note that you are required to register the validator first, this is because the validator has to be on the network in order to set weights. You can do this by running the following command:
 
@@ -178,11 +200,41 @@ Join us on this important journey as we distill the Closed-Source intelligence r
 
    The current synthia **netuid** is **3**.
 
-2. Serve the validator
+5. Serve the validator
 
    ```sh
-   python3 -m synthia.cli <your_commune_key> [--call-timeout <seconds>]
+   python3 -m synthia.cli <your_commune_key> [--call-timeout <seconds>] [--provider <provider_name>]
    ```
+
    The default value of the `--call-timeout` parameter is 65 seconds.
+   You can pass --provider openrouter to run using openrouter provider
 
    Note: you need to keep this process alive, running in the background. Some options are [tmux](https://www.tmux.org/](https://ioflood.com/blog/install-tmux-command-linux/)), [pm2](https://pm2.io/docs/plus/quick-start/) or [nohup](https://en.wikipedia.org/wiki/Nohup).
+
+## Launcher Script
+
+[Eden](https://twitter.com/project_eden_ai) has provided a new bash script that will walk you through the process of launching a validator or miner for a simpler and streamlined process.
+
+### Using the launcher
+
+Allow commands to be executed by the script:
+`chmod +x scripts/launch.sh`
+
+Run the launcher:
+`bash scripts/launch.sh`
+
+Just follow the prompts after that.
+
+### What it does
+
+The launch script will prompt you step by step through the process of launching
+a validator or miner or both and execute the required commands without having
+to know details about the CLI.
+
+![launcher](assets/launch.png)
+
+Be aware that the launcher does execute commands that make changes on the block chain including balance transfers and module registration. Be sure you know what you'd like to do before using this tool as some actions cannot be undone. This tool is provided free of charge as is and with no warranty or guarantee. Use at your own risk.
+
+### Video tutorial
+
+[Video tutorial](https://www.youtube.com/watch?v=3CynHZdvbok)
